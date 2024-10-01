@@ -9,9 +9,12 @@
     "lint": "next lint"
   },
   "dependencies": {
+    "babel-plugin-react-compiler": "^0.0.0-experimental-3feb7e4-20240930",
+    "monero-ts": "^0.11.1",
+    "next": "15.0.0-rc.0",
+    "node-appwrite": "^14.1.0",
     "react": "19.0.0-rc-f994737d14-20240522",
-    "react-dom": "19.0.0-rc-f994737d14-20240522",
-    "next": "15.0.0-rc.0"
+    "react-dom": "19.0.0-rc-f994737d14-20240522"
   },
   "devDependencies": {
     "typescript": "^5",
