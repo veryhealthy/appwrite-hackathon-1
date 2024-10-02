@@ -1,5 +1,5 @@
 "use server";
-import { Client, Account, Users } from "node-appwrite";
+import { ID, Client, Account, Users, AppwriteException } from "node-appwrite";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 
@@ -70,13 +70,42 @@ export async function getLoggedInUser() {
     }
 }
 
-export async function login() {
+export async function register(prevState: any, formData: FormData) {
+
+    const email = formData.get("email");
+    const password = formData.get("password");
+    const name = formData.get("name");
+
+    const { account } = await createAdminClient();
     try {
-        const { account } = await createSessionClient();
-        return await account.get();
-    } catch (error) {
-        return null;
+        await account.create(ID.unique(), email as string, password as string, name as string);
+    } catch (error: any) {
+        return { ...prevState, error: { message: error?.message } };
     }
+    const session = await account.createEmailPasswordSession(email as string, password as string);
+
+    cookies().set("session", session.secret, {
+        path: "/",
+        httpOnly: true,
+        sameSite: "strict",
+        secure: true,
+    });
+
+    redirect("/account");
+}
+
+export async function login(prevState: any, formData: FormData) {
+
+    const email = formData.get("email");
+    const password = formData.get("password");
+    const { account } = await createAdminClient();
+    try {
+        const session = await account.createEmailPasswordSession(email as string, password as string);
+        return { ...prevState, session, message: "Connected with success." };
+    } catch (error: any) {
+        return { ...prevState, error: { message: error?.message } };
+    }
+
 }
 
 export async function getUsers() {
