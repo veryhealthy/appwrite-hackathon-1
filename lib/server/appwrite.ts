@@ -1,14 +1,17 @@
 "use server";
-import { ID, Client, Account, Users, AppwriteException } from "node-appwrite";
+import { ID, Client, Account, Users, AppwriteException, Query } from "node-appwrite";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 
 
-function getClient() {
-    return new Client()
+function getClient(admin=false) {
+    const client =  new Client()
         .setEndpoint(process.env.NEXT_PUBLIC_APPWRITE_ENDPOINT as string)
         .setProject(process.env.NEXT_PUBLIC_APPWRITE_PROJECT as string)
-        .setKey(process.env.NEXT_APPWRITE_KEY as string);
+
+    if (admin) client.setKey(process.env.NEXT_APPWRITE_KEY as string);
+
+    return client;
 }
 
 export async function signOut() {
@@ -23,9 +26,7 @@ export async function signOut() {
 }
 
 export async function getSession() {
-    const client = new Client()
-        .setEndpoint(process.env.NEXT_PUBLIC_APPWRITE_ENDPOINT as string)
-        .setProject(process.env.NEXT_PUBLIC_APPWRITE_PROJECT as string);
+    const client = getClient();
 
     const account = new Account(client);
     const result = await account.getSession("current");
@@ -33,9 +34,7 @@ export async function getSession() {
 }
 
 export async function createSessionClient() {
-    const client = new Client()
-        .setEndpoint(process.env.NEXT_PUBLIC_APPWRITE_ENDPOINT as string)
-        .setProject(process.env.NEXT_PUBLIC_APPWRITE_PROJECT as string);
+    const client = getClient();
 
     const session = cookies().get("session");
     if (!session || !session.value) {
@@ -52,12 +51,23 @@ export async function createSessionClient() {
 }
 
 export async function createAdminClient() {
-    const client = getClient();
+    const client = getClient(true);
 
     return {
         get account() {
             return new Account(client);
         },
+
+
+        async getUserFromEmail(userEmail: string) {
+            const users = new Users(client);
+
+            const userList = await users.list([
+                Query.equal("email", userEmail),
+            ])
+
+            return userList
+        }
     };
 }
 
@@ -68,44 +78,6 @@ export async function getLoggedInUser() {
     } catch (error) {
         return null;
     }
-}
-
-export async function register(prevState: any, formData: FormData) {
-
-    const email = formData.get("email");
-    const password = formData.get("password");
-    const name = formData.get("name");
-
-    const { account } = await createAdminClient();
-    try {
-        await account.create(ID.unique(), email as string, password as string, name as string);
-    } catch (error: any) {
-        return { ...prevState, error: { message: error?.message } };
-    }
-    const session = await account.createEmailPasswordSession(email as string, password as string);
-
-    cookies().set("session", session.secret, {
-        path: "/",
-        httpOnly: true,
-        sameSite: "strict",
-        secure: true,
-    });
-
-    redirect("/account");
-}
-
-export async function login(prevState: any, formData: FormData) {
-
-    const email = formData.get("email");
-    const password = formData.get("password");
-    const { account } = await createAdminClient();
-    try {
-        const session = await account.createEmailPasswordSession(email as string, password as string);
-        return { ...prevState, session, message: "Connected with success." };
-    } catch (error: any) {
-        return { ...prevState, error: { message: error?.message } };
-    }
-
 }
 
 export async function getUsers() {
